@@ -1,0 +1,20 @@
+{
+  "_comment": "Example entry to append to your Hermes profile's cron/jobs.json 'jobs' array. Generate a fresh 'id', set 'deliver' to your channel, and let the scheduler compute next_run_at. Runs Sundays 05:00.",
+  "id": "REPLACE_WITH_RANDOM_HEX",
+  "name": "model-scout",
+  "prompt": "",
+  "skills": ["model-scout"],
+  "skill": "model-scout",
+  "model": null,
+  "provider": null,
+  "base_url": null,
+  "script": "model-scout.sh",
+  "no_agent": true,
+  "context_from": null,
+  "schedule": { "kind": "cron", "expr": "0 5 * * 0", "display": "0 5 * * 0" },
+  "schedule_display": "0 5 * * 0",
+  "repeat": { "times": null, "completed": 0 },
+  "enabled": true,
+  "state": "scheduled",
+  "deliver": "telegram:YOUR_CHAT_ID"
+}
