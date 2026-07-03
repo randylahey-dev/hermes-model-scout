@@ -10,9 +10,25 @@
 A="${SCOUT_DIR:-$(cd "$(dirname "$0")" && pwd)}"
 PY="${SCOUT_PY:-$A/venv/bin/python}"
 [ -x "$PY" ] || PY="python3"
+DL_CACHE="$A/.cache/huggingface/download"
+STALE_SECS="${SCOUT_STALE_SECS:-21600}"   # 6h — a real download never runs this long
 TS=$(date +%Y%m%d-%H%M)
 LOG="$A/.logs/run-$TS.log"
 mkdir -p "$A/.logs"
+
+# Reap any WEDGED download from a previous run before checking "is one running".
+# Without this, a stalled pull that never dies leaves a live model-scout.py
+# process, and the pgrep guard below then skips every future run indefinitely.
+# Kill anything older than STALE_SECS and clear its half-written partials.
+for pid in $(pgrep -f "model-scout.py$"); do
+  et=$(ps -o etimes= -p "$pid" 2>/dev/null | tr -d ' ')
+  if [ -n "$et" ] && [ "$et" -gt "$STALE_SECS" ]; then
+    echo "⚠️ Reaping stale scout process (pid $pid, ${et}s old) + clearing partials."
+    echo
+    kill "$pid" 2>/dev/null; sleep 2; kill -9 "$pid" 2>/dev/null
+    rm -f "$DL_CACHE"/*.incomplete "$DL_CACHE"/*.lock 2>/dev/null
+  fi
+done
 
 if pgrep -f "model-scout.py$" >/dev/null 2>&1; then
   echo "⏳ A previous download is still in progress — skipping this week's launch."

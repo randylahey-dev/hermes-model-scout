@@ -18,6 +18,12 @@ License: MIT
 """
 import os, re, sys, json, time, shutil, argparse, datetime as dt
 
+# Fail fast on a stalled download instead of hanging indefinitely. MUST be set
+# before huggingface_hub is imported — its constants capture this env var at
+# import time.
+os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT",
+                      os.environ.get("SCOUT_DL_TIMEOUT", "60"))
+
 import requests
 from huggingface_hub import hf_hub_download
 
@@ -144,8 +150,11 @@ def best_quant_file(repo_id):
         if not path.lower().endswith(".gguf"):
             continue
         base = os.path.basename(path)
-        # skip multi-part shards (handled poorly unattended)
-        if re.search(r"-0000\d-of-\d", base) or "split" in base.lower():
+        # skip multi-part shards (handled poorly unattended). Match ANY shard
+        # index: a narrower r"-0000\d-of-\d" only catches parts 1-9, so a huge
+        # sharded model can slip through on a smaller trailing shard and look
+        # like it fits the single-file size envelope.
+        if re.search(r"-\d+-of-\d+", base) or "split" in base.lower():
             continue
         size = entry.get("size") or (entry.get("lfs") or {}).get("size") or 0
         size_gb = size / 1e9
